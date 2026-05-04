@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -110,17 +109,6 @@ func escapeHTML(s string) string {
 }
 
 func pdfToImage(input, output, format string) error {
-	// Try Chrome first
-	err := pdfToImageWithChrome(input, output, format)
-	if err == nil {
-		return nil
-	}
-
-	// Fallback to native tools
-	return pdfToImageWithNativeTool(input, output, format)
-}
-
-func pdfToImageWithChrome(input, output, format string) error {
 	ctx, cancel := chromedp.NewContext(context.Background())
 	defer cancel()
 
@@ -140,32 +128,4 @@ func pdfToImageWithChrome(input, output, format string) error {
 	}
 
 	return os.WriteFile(output, buf, 0644)
-}
-
-func pdfToImageWithNativeTool(input, output, format string) error {
-	sipsFormat := "jpeg"
-	if format == "png" {
-		sipsFormat = "png"
-	}
-
-	// Try sips (macOS)
-	cmd := exec.Command("sips", "-s", "format", sipsFormat, input, "--out", output)
-	if err := cmd.Run(); err == nil {
-		return nil
-	}
-
-	// Try magick (ImageMagick 7)
-	firstPage := input + "[0]"
-	cmd = exec.Command("magick", firstPage, output)
-	if err := cmd.Run(); err == nil {
-		return nil
-	}
-
-	// Try convert (ImageMagick 6)
-	cmd = exec.Command("convert", firstPage, output)
-	if err := cmd.Run(); err == nil {
-		return nil
-	}
-
-	return fmt.Errorf("no available PDF renderer found. Install Chrome/Chromium, macOS sips, or ImageMagick")
 }
